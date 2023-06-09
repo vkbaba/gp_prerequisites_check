@@ -250,3 +250,11 @@ check_rx_jumbo 4096
 check_mtu_size ens192 9000
 # It may take a few minutes for the packages to be installed (~3 minutes)
 check_installed_packages
+# Output hosts info 
+echo "Please make sure theses name resolution settings are correct:"
+echo "\nContents of /etc/hosts:"
+cat /etc/hosts
+echo -e "\nContents of /home/gpadmin/hosts-all:"
+cat /home/gpadmin/hosts-all
+echo -e "\nContents of /home/gpadmin/hosts-segments:"
+cat /home/gpadmin/hosts-segments
