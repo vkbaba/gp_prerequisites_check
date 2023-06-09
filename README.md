@@ -4,6 +4,10 @@
 
 `gp_vm_prerequisite_checker.sh` is a shell script to verify if the necessary prerequisites for deploying a Greenplum Virtual Machine.
 
+Please check the following document:
+
+https://docs.vmware.com/en/VMware-Greenplum/6/greenplum-database/vsphere-deploying-byo-template-mirrorless.html
+
 ## Functionality
 
 The script checks for the following prerequisites:
@@ -29,3 +33,9 @@ To execute the script, navigate to the directory containing the script and run t
 
 ```bash
 sh gp_vm_prerequisite_checker.sh
+
+## Tested Versions and info
+
+- CentOS7
+- greenplum-db-6.24.3-rhel7-x86_64
+- Mirrorless deployment on vSphere and vSAN
