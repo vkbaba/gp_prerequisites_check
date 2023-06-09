@@ -97,6 +97,8 @@ PASSED: The tree installation is correctly set to 'installed'.
 PASSED: The wget installation is correctly set to 'installed'.
 PASSED: The which installation is correctly set to 'installed'.
 PASSED: The zip installation is correctly set to 'installed'.
+
+Please make sure theses name resolution settings are correct:
 Contents of /etc/hosts:
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
