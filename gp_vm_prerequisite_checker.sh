@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 report_result() {
     local item=$1
     local expected=$2
