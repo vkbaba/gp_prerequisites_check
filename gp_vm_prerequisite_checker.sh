@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# TODO check the contents of /home/gpadmin/.bashrc
 report_result() {
     local item=$1
     local expected=$2
