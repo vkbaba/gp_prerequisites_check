@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# TODO check the contents of /home/gpadmin/.bashrc
 report_result() {
     local item=$1
     local expected=$2
@@ -51,7 +50,6 @@ check_ntp_servers() {
 }
 
 
-
 check_device_mount_and_fstab() {
     device="/dev/sdb"
     expected_mountpoint="/gpdata"
@@ -64,22 +62,62 @@ check_device_mount_and_fstab() {
     report_result "fstab entry for $device" "$fstab_entry" "$actual_fstab_entry"
 }
 
-check_directory_owner() {
-    directory=$1
+check_directory_owner_and_group() {
+    directory_pattern=$1
     expected_owner=$2
     expected_group=$3
 
-    if [ ! -d "$directory" ]; then
-        echo "ERROR: Directory $directory does not exist."
-    fi 
+    # Create an array with the directory paths that match the pattern
+    directories=( $directory_pattern )
 
-    actual_owner=$(stat -c %U $directory 2>/dev/null)
-    report_result "Owner of $directory" "$expected_owner" "$actual_owner"
+    # If the array is empty, there are no matching directories
+    if [ ${#directories[@]} -eq 0 ]; then
+        echo "ERROR: No directories match the pattern $directory_pattern."
+        return
+    fi
 
-    actual_group=$(stat -c %G $directory 2>/dev/null)
-    report_result "Group of $directory" "$expected_group" "$actual_group"
+    # Check each directory that matches the pattern
+    for directory in "${directories[@]}"; do
+        if [ ! -d "$directory" ]; then
+            report_result "Existence of $directory" "exists" "does not exist"
+            continue
+        fi 
+
+        actual_owner=$(stat -c %U $directory 2>/dev/null)
+        report_result "Owner of $directory" "$expected_owner" "$actual_owner"
+
+        actual_group=$(stat -c %G $directory 2>/dev/null)
+        report_result "Group of $directory" "$expected_group" "$actual_group"
+    done
 }
 
+check_file_owner_and_group() {
+    file=$1
+    expected_owner=$2
+    expected_group=$3
+
+    if [ ! -f "$file" ]; then
+        report_result "Existence of $file" "exists" "does not exist"
+        return
+    fi 
+
+    actual_owner=$(stat -c %U $file 2>/dev/null)
+    report_result "Owner of $file" "$expected_owner" "$actual_owner"
+
+    actual_group=$(stat -c %G $file 2>/dev/null)
+    report_result "Group of $file" "$expected_group" "$actual_group"
+}
+
+check_file_content() {
+    file=$1
+    expected_content=$2
+
+    if ! grep -q "$expected_content" "$file"; then
+        echo "ERROR: $file does not contain '$expected_content'."
+    else
+        echo "PASSED: $file contains '$expected_content'."
+    fi
+}
 
 
 check_kernel_params() {
@@ -227,6 +265,24 @@ check_mtu_size() {
     report_result "MTU size for $network_device" "$expected_mtu_size" "$actual_mtu_size"
 }
 
+check_sudoers_entry() {
+    expected_entry=$1
+
+    # Use the visudo command with the -c (check) option to check the sudoers file
+    visudo -cf /etc/sudoers > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "ERROR: The sudoers file is not valid."
+        return
+    fi
+
+    # Check if the expected entry is in the sudoers file
+    if ! grep -qxF "$expected_entry" /etc/sudoers; then
+        echo "ERROR: The expected entry \"$expected_entry\" is not in the sudoers file."
+    else
+        echo "PASSED: The expected entry \"$expected_entry\" is in the sudoers file."
+    fi
+}
+
 check_selinux_status
 check_service_status firewalld disabled
 check_service_status tuned disabled
@@ -235,10 +291,11 @@ check_service_status cgconfig.service enabled
 check_service_status ntpd enabled
 check_ntp_servers
 check_device_mount_and_fstab
-check_directory_owner "/gpdata/master" "gpadmin" "gpadmin"
+check_directory_owner_and_group "/gpdata/master" "gpadmin" "gpadmin"
 # Comment out the following line if you are not using standby master
 # check_directory_owner "/gpdata/mirror" "gpadmin" "gpadmin"
-check_directory_owner "/gpdata/primary" "gpadmin" "gpadmin"
+# check_directory_owner "/gpdata/primary" "gpadmin" "gpadmin"
+check_directory_owner_and_group "/gpdata/primary" "gpadmin" "gpadmin"
 check_kernel_params "transparent_hugepage=never"
 check_kernel_params "elevator=deadline"
 check_ulimit_values "n" 524288
@@ -247,8 +304,20 @@ check_cgroup_directories
 check_sys_param 30
 ssh_passwordless_test gpadmin localhost
 check_readahead_value 16384
+check_file_content "/etc/rc.d/rc.local"  "/sbin/blockdev"
 check_rx_jumbo 4096
+check_file_content "/etc/rc.d/rc.local"  "/sbin/ethtool"
 check_mtu_size ens192 9000
+check_file_content "/etc/rc.d/rc.local"  "/sbin/ip link"
+
+check_file_owner_and_group "/home/gpadmin/.bashrc" "gpadmin" "gpadmin"
+check_file_content "/home/gpadmin/.bashrc" "source /usr/local/greenplum-db/greenplum_path.sh"
+
+# This test only checks the ownership of the top-level directory
+check_directory_owner_and_group "/usr/local/greenplum*" "gpadmin" "gpadmin"
+# Without this setting `gpssh -f /home/gpadmin/hosts-all "sudo systemctl enable gpdb.service"` shows an authentication error
+check_sudoers_entry "gpadmin ALL=(ALL) NOPASSWD: ALL"
+
 # It may take a few minutes for the packages to be installed (~3 minutes)
 check_installed_packages
 # Output hosts info 
@@ -259,3 +328,4 @@ echo -e "\nContents of /home/gpadmin/hosts-all:"
 cat /home/gpadmin/hosts-all
 echo -e "\nContents of /home/gpadmin/hosts-segments:"
 cat /home/gpadmin/hosts-segments
+
